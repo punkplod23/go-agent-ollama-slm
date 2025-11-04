@@ -1,0 +1,7 @@
+.env
+.env.example
+makefile
+Dockerfile
+docker-compose.yml
+run_docker.ps1
+run_with_env.sh
