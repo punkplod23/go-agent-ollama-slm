@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-agent-api-deployment
+  labels:
+    app: go-agent-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-agent-api
+  template:
+    metadata:
+      labels:
+        app: go-agent-api
+    spec:
+      containers:
+      - name: go-agent-api
+        image: ghcr.io/punkplod23/go-agent-api:latest # Replace with your actual image name and tag
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: go-agent-api-secrets
+      imagePullSecrets:
+      - name: ghcr-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-agent-api-service
+spec:
+  selector:
+    app: go-agent-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-agent-api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: agentapi.localhost # Replace with your actual host name
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-agent-api-service
+            port:
+              number: 80
