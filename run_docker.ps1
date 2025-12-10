@@ -11,12 +11,28 @@ if (-not (Test-Path -Path $EnvFilePath -PathType Leaf)) {
     exit 1
 }
 
+# --- (Optional) Connecting to a Service in Kubernetes ---
+
+# If the OPENWEBUIHOSTURL points to a service running inside a Kubernetes cluster,
+# you must forward the service's port to your local machine before running this script.
+#
+# 1. Find the service name and port in Kubernetes (e.g., 'open-webui' on port 8080).
+#    kubectl get service -n <your-namespace>
+#
+# 2. In a SEPARATE terminal, run kubectl port-forward. This is a blocking command.
+#    # kubectl port-forward service/<service-name> <local-port>:<service-port>
+#    kubectl port-forward service/open-webui 9090:8080
+#
+# 3. Update the OPENWEBUIHOSTURL in your .env file to point to the local port.
+#    OPENWEBUIHOSTURL=http://localhost:9090
+
 # --- 2. Prepare the Environment Variables for Docker ---
 
 Write-Host "Reading environment variables from .env file..."
 
 # This array will hold the alternating '-e' and 'KEY=VALUE' arguments for the docker run command
 $DockerEnvArguments = @()
+$FoundKeys = @{}
 
 # List of environment variables that need to be passed to the Docker container
 $RequiredKeys = @(
@@ -42,13 +58,24 @@ Get-Content $EnvFilePath | ForEach-Object {
             # Add the -e argument to the array, followed by the KEY=VALUE pair
             $DockerEnvArguments += "-e"
             $DockerEnvArguments += "$Key=$Value"
+
+            if (-not $Value) {
+                Write-Error "The environment variable '$Key' in '$EnvFilePath' must not have an empty value."
+                exit 1
+            }
+            $FoundKeys[$Key] = $true
         }
     }
 }
 
-if ($DockerEnvArguments.Count -lt 14) {
-    Write-Warning "Warning: Not all 7 expected DVSA variables were found in the .env file or successfully parsed."
+# Validate that all required keys were found
+$MissingKeys = $RequiredKeys | Where-Object { -not $FoundKeys.ContainsKey($_) }
+
+if ($MissingKeys) {
+    Write-Error "The following required environment variables were not found in '$EnvFilePath': $($MissingKeys -join ', ')"
+    exit 1
 }
+
 
 
 # --- 3. Build the Docker container ---
@@ -63,12 +90,21 @@ if ($LASTEXITCODE -ne 0) {
 
 # --- 4. Run the Docker container ---
 
-Write-Host "`nRunning Docker container 'go-agent-api' on port 8080..."
+$ContainerName = "go-agent-api-container"
+
+# Stop and remove the container if it already exists to prevent conflicts
+Write-Host "`nStopping and removing old container instance '$ContainerName'..."
+docker rm -f $ContainerName 2>$null
+
+Write-Host "Starting new container '$ContainerName' on port 8080..."
 
 # Construct the full argument list for docker run
 $RunArguments = @(
     "run",
-    "-p", "8080:8080"
+    "--name", $ContainerName,
+    "-p", "8080:8080",
+    # Add '--rm' to automatically clean up the container when it exits
+    "--rm"
 )
 
 # Add the environment variables arguments
@@ -78,4 +114,9 @@ $RunArguments += $DockerEnvArguments
 $RunArguments += "go-agent-api"
 
 # Execute the final command using the call operator (&)
-& docker $RunArguments
+try {
+    & docker $RunArguments
+} catch {
+    Write-Error "Failed to run Docker container. Error: $_"
+    exit 1
+}
