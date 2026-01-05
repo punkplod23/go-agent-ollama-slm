@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
 	"punkplod23/go-agent-ollama-slm/config"
-	"punkplod23/go-agent-ollama-slm/internal/webui"
+	"punkplod23/go-agent-ollama-slm/pkg/api"
 )
 
 func main() {
@@ -15,10 +13,5 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	err, _ = webui.CreateMainChat(cfg, "What is the capital of France?")
-	if err != nil {
-		fmt.Println("Error in main chat flow:", err)
-		os.Exit(1)
-	}
-
+	api.StartServer(cfg)
 }

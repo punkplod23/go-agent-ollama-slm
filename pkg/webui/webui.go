@@ -1,7 +1,6 @@
 package webui
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -26,7 +25,6 @@ const (
 
 // --- GLOBAL VARIABLE ---
 var (
-	question         string
 	userMessage      Message
 	assistantMessage Message // Replaced in Step 2, but used globally
 )
@@ -380,7 +378,7 @@ func createChat(userQuestion string, cfg *config.Config) (string, string, error)
 }
 
 // 2 & 4. Centralized function to update the existing chat state
-func updateChat(chatID string, step int, userMsgID string, assistantMsgID string, cfg *config.Config) error {
+func updateChat(chatID string, step int, userMsgID string, assistantMsgID string, cfg *config.Config, question string) error {
 
 	// 1. Re-initialize assistantMessage for the update payload
 	// This is done to ensure the timestamp is fresh for the update request
@@ -540,19 +538,7 @@ func fetchFinalChatWithPolling(chatID, assistantMsgID string, cfg *config.Config
 }
 
 func CreateMainChat(cfg *config.Config, prompt string) (error, string) {
-
-	// 1. Get the user's question
-	fmt.Println("--- Open WebUI Backend-Controlled Flow (Go) ---")
-	fmt.Print("Please enter your question for the LLM: ")
-
-	reader := bufio.NewReader(os.Stdin)
-
-	question = prompt
-	if question == "" {
-		question, _ = reader.ReadString('\n')
-		question = strings.TrimSpace(question)
-	}
-
+	question := strings.TrimSpace(prompt)
 	fmt.Printf("Question: %s\n\n", question)
 
 	// --- EXECUTE FLOW ---
@@ -560,25 +546,24 @@ func CreateMainChat(cfg *config.Config, prompt string) (error, string) {
 	chatID, userMsgID, err := createChat(question, cfg)
 	if err != nil {
 		fmt.Println("Error:", err)
-		os.Exit(1)
+		return err, ""
 	}
 
 	// Generate assistant ID here, as it's used in all subsequent steps
 	assistantMsgID := uuid.New().String()
 
 	// Step 2: Use the unified updateChat function to inject the empty message
-	err = updateChat(chatID, 2, userMsgID, assistantMsgID, cfg)
+	err = updateChat(chatID, 2, userMsgID, assistantMsgID, cfg, question)
 	if err != nil {
 		fmt.Println("Error:", err)
-		os.Exit(1)
+		return err, ""
 	}
 
 	err = triggerCompletion(chatID, assistantMsgID, cfg)
 	if err != nil {
 		fmt.Println("Error:", err)
-		os.Exit(1)
+		return err, ""
 	}
 
 	return err, ""
-
 }
