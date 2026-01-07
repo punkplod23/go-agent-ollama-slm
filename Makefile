@@ -25,3 +25,8 @@ apply:
 
 clean:
 	$(KUBECTL) delete -f go-agent.yaml --ignore-not-found
+
+start-ghcr:
+	docker build -t ghcr.io/punkplod23/go-agent-api:latest .
+	docker push ghcr.io/punkplod23/go-agent-api:latest
+

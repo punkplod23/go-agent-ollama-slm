@@ -21,6 +21,6 @@ func LoadConfigFromEnv() (*Config, error) {
 		OpenWebUIModelName: os.Getenv("OPENWEBUIMODELNAME"),
 		DVSAAPIURL:         os.Getenv("DVSAAPIURL"),
 		OpenALPRAPIURL:     os.Getenv("OPENALPRAPIURL"),
-		TempDirPath:        `/mnt/c/github/go-agent-ollama-slm/`,
+		TempDirPath:        os.Getenv("TEMPDIRPATH"),
 	}, nil
 }
