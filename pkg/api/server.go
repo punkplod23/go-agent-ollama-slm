@@ -22,6 +22,7 @@ func StartServer(cfg *config.Config) {
 	r.HandleFunc("/api/v1/chat", createChatHandler(cfg)).Methods("POST")
 	r.HandleFunc("/api/v1/files", addFileHandler(cfg)).Methods("POST")
 	r.HandleFunc("/api/v1/process-base64-image", processBase64ImageHandler(cfg)).Methods("POST")
+	r.HandleFunc("/api/v1/vehicle-lookup", vehicleLookupHandler(cfg)).Methods("POST")
 
 	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
@@ -115,5 +116,29 @@ func processBase64ImageHandler(cfg *config.Config) http.HandlerFunc {
 		}
 
 		json.NewEncoder(w).Encode(map[string]string{"registration_id": regID})
+	}
+}
+
+func vehicleLookupHandler(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			RegistrationID string `json:"registration_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Printf("vehicleLookupHandler: error decoding request body: %v", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("vehicleLookupHandler: looking up registration ID: %s", req.RegistrationID)
+		ownerID, err := tools.GetOwnerID(req.RegistrationID, cfg)
+		if err != nil {
+			log.Printf("vehicleLookupHandler: error getting owner ID: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("vehicleLookupHandler: successfully retrieved owner ID: %s", ownerID)
+		json.NewEncoder(w).Encode(map[string]string{"owner_id": ownerID})
 	}
 }

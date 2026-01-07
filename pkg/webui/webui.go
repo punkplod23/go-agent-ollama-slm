@@ -36,6 +36,7 @@ type Chat struct {
 	Title    string    `json:"title"`
 	Models   []string  `json:"models"`
 	Messages []Message `json:"messages"`
+	Tools    []string  `json:"tools,omitempty"`
 	History  History   `json:"history"`
 }
 
@@ -354,6 +355,7 @@ func createChat(userQuestion string, cfg *config.Config) (string, string, error)
 			Title:    userQuestion,
 			Models:   []string{cfg.OpenWebUIModelName},
 			Messages: []Message{userMessage},
+			Tools:    []string{"DVSA Lookup"},
 			History: History{
 				CurrentID: userMsgID,
 				Messages:  map[string]Message{userMsgID: userMessage},
@@ -409,6 +411,7 @@ func updateChat(chatID string, step int, userMsgID string, assistantMsgID string
 				userMessage,
 				currentAssistantMessage,
 			},
+			Tools: []string{"DVSA Lookup"},
 			History: History{
 				CurrentID: currentAssistantMessage.ID,
 				Messages: map[string]Message{
