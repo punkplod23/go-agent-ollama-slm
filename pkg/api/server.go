@@ -53,11 +53,12 @@ func createChatHandler(cfg *config.Config) http.HandlerFunc {
 			}
 			// Use a unique name for the file to avoid conflicts.
 			filename := fmt.Sprintf("chat-content-%s.md", uuid.New().String())
-			_, err := webui.AddFileToKnowledgeCollection(req.Content, filename, knowledgeID, cfg)
+			DocumentID, err := webui.AddFileToKnowledgeCollection(req.Content, filename, knowledgeID, cfg)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("failed to add content to knowledge collection: %v", err), http.StatusInternalServerError)
 				return
 			}
+			req.DocumentID = DocumentID
 		}
 
 		chatID, err := webui.CreateMainChat(cfg, req.Prompt, knowledgeID, req.DocumentID)
