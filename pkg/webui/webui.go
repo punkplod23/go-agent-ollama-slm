@@ -76,6 +76,11 @@ type EnvironmentData struct {
 	CurrentTimezone string `json:"{{CURRENT_TIMEZONE}}"`
 }
 
+type FileReference struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
 type CompletionRequest struct {
 	ChatID          string          `json:"chat_id"`
 	MessageID       string          `json:"id"`
@@ -86,6 +91,7 @@ type CompletionRequest struct {
 	Features        Features        `json:"features"`
 	EnvironmentData EnvironmentData `json:"variables"`
 	SessionID       string          `json:"session_id,omitempty"`
+	Files           []FileReference `json:"files,omitempty"`
 }
 
 type CompletedRequest struct {
@@ -439,7 +445,7 @@ func updateChat(chatID string, step int, userMsgID string, assistantMsgID string
 }
 
 // 3. Trigger the completion (POST /api/chat/completions)
-func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config) error {
+func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config, knowledgeID string) error {
 
 	requestPayload := CompletionRequest{
 		ChatID:    chatID,
@@ -465,6 +471,15 @@ func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config) error 
 			CurrentTimezone: "Europe",
 		},
 		SessionID: chatID,
+	}
+
+	if knowledgeID != "" {
+		requestPayload.Files = []FileReference{
+			{
+				Type: "collection",
+				ID:   knowledgeID,
+			},
+		}
 	}
 
 	err := callAPI("POST", "/api/chat/completions", requestPayload, nil, cfg)
@@ -540,7 +555,7 @@ func fetchFinalChatWithPolling(chatID, assistantMsgID string, cfg *config.Config
 	return latestMsg.Content, nil
 }
 
-func CreateMainChat(cfg *config.Config, prompt string) (error, string) {
+func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string) (string, error) {
 	question := strings.TrimSpace(prompt)
 	fmt.Printf("Question: %s\n\n", question)
 
@@ -549,7 +564,7 @@ func CreateMainChat(cfg *config.Config, prompt string) (error, string) {
 	chatID, userMsgID, err := createChat(question, cfg)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return err, ""
+		return "", err
 	}
 
 	// Generate assistant ID here, as it's used in all subsequent steps
@@ -559,14 +574,14 @@ func CreateMainChat(cfg *config.Config, prompt string) (error, string) {
 	err = updateChat(chatID, 2, userMsgID, assistantMsgID, cfg, question)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return err, ""
+		return "", err
 	}
 
-	err = triggerCompletion(chatID, assistantMsgID, cfg)
+	err = triggerCompletion(chatID, assistantMsgID, cfg, knowledgeID)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return err, ""
+		return "", err
 	}
 
-	return err, ""
+	return chatID, nil
 }

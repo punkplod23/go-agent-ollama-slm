@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -10,11 +11,14 @@ import (
 	"punkplod23/go-agent-ollama-slm/pkg/tools"
 	"punkplod23/go-agent-ollama-slm/pkg/webui"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 type CreateChatRequest struct {
-	Prompt string `json:"prompt"`
+	Prompt      string `json:"prompt"`
+	Content     string `json:"content,omitempty"`
+	KnowledgeID string `json:"knowledge_id,omitempty"`
 }
 
 func StartServer(cfg *config.Config) {
@@ -38,13 +42,34 @@ func createChatHandler(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 
-		err, resp := webui.CreateMainChat(cfg, req.Prompt)
+		knowledgeID := req.KnowledgeID
+
+		// If content is provided, add it to the knowledge base
+		if req.Content != "" {
+			if knowledgeID == "" {
+				http.Error(w, "knowledge_id is required when providing content", http.StatusBadRequest)
+				return
+			}
+			// Use a unique name for the file to avoid conflicts.
+			filename := fmt.Sprintf("chat-content-%s.md", uuid.New().String())
+			_, err := webui.AddFileToKnowledgeCollection(req.Content, filename, knowledgeID, cfg)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("failed to add content to knowledge collection: %v", err), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		chatID, err := webui.CreateMainChat(cfg, req.Prompt, knowledgeID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		json.NewEncoder(w).Encode(resp)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"chat_id": chatID,
+			"status":  "chat process initiated",
+		})
 	}
 }
 
