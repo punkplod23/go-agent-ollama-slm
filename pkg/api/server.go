@@ -19,6 +19,7 @@ type CreateChatRequest struct {
 	Prompt      string `json:"prompt"`
 	Content     string `json:"content,omitempty"`
 	KnowledgeID string `json:"knowledge_id,omitempty"`
+	DocumentID  string `json:"document_id,omitempty"`
 }
 
 func StartServer(cfg *config.Config) {
@@ -59,7 +60,7 @@ func createChatHandler(cfg *config.Config) http.HandlerFunc {
 			}
 		}
 
-		chatID, err := webui.CreateMainChat(cfg, req.Prompt, knowledgeID)
+		chatID, err := webui.CreateMainChat(cfg, req.Prompt, knowledgeID, req.DocumentID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

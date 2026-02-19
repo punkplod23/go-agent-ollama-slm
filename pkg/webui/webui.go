@@ -445,7 +445,7 @@ func updateChat(chatID string, step int, userMsgID string, assistantMsgID string
 }
 
 // 3. Trigger the completion (POST /api/chat/completions)
-func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config, knowledgeID string) error {
+func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config, knowledgeID string, documentID string) error {
 
 	requestPayload := CompletionRequest{
 		ChatID:    chatID,
@@ -474,12 +474,16 @@ func triggerCompletion(chatID, assistantMsgID string, cfg *config.Config, knowle
 	}
 
 	if knowledgeID != "" {
-		requestPayload.Files = []FileReference{
-			{
-				Type: "collection",
-				ID:   knowledgeID,
-			},
-		}
+		requestPayload.Files = append(requestPayload.Files, FileReference{
+			Type: "collection",
+			ID:   knowledgeID,
+		})
+	}
+	if documentID != "" {
+		requestPayload.Files = append(requestPayload.Files, FileReference{
+			Type: "file",
+			ID:   documentID,
+		})
 	}
 
 	err := callAPI("POST", "/api/chat/completions", requestPayload, nil, cfg)
@@ -555,7 +559,7 @@ func fetchFinalChatWithPolling(chatID, assistantMsgID string, cfg *config.Config
 	return latestMsg.Content, nil
 }
 
-func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string) (string, error) {
+func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string, documentID string) (string, error) {
 	question := strings.TrimSpace(prompt)
 	fmt.Printf("Question: %s\n\n", question)
 
@@ -577,7 +581,7 @@ func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string) (stri
 		return "", err
 	}
 
-	err = triggerCompletion(chatID, assistantMsgID, cfg, knowledgeID)
+	err = triggerCompletion(chatID, assistantMsgID, cfg, knowledgeID, documentID)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
