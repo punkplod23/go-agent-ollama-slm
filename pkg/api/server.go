@@ -61,7 +61,7 @@ func createChatHandler(cfg *config.Config) http.HandlerFunc {
 			req.DocumentID = DocumentID
 		}
 
-		chatID, err := webui.CreateMainChat(cfg, req.Prompt, knowledgeID, req.DocumentID)
+		chatID, err := webui.CreateMainChat(cfg, req.Prompt, req.DocumentID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

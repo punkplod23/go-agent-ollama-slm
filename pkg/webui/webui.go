@@ -559,7 +559,7 @@ func fetchFinalChatWithPolling(chatID, assistantMsgID string, cfg *config.Config
 	return latestMsg.Content, nil
 }
 
-func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string, documentID string) (string, error) {
+func CreateMainChat(cfg *config.Config, prompt string, documentID string) (string, error) {
 	question := strings.TrimSpace(prompt)
 	fmt.Printf("Question: %s\n\n", question)
 
@@ -581,7 +581,7 @@ func CreateMainChat(cfg *config.Config, prompt string, knowledgeID string, docum
 		return "", err
 	}
 
-	err = triggerCompletion(chatID, assistantMsgID, cfg, knowledgeID, documentID)
+	err = triggerCompletion(chatID, assistantMsgID, cfg, "", documentID)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", err
